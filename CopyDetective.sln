@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CopyDetective", "CopyDetective.csproj", "{1719024E-A466-4A41-9AB4-C47A9E3B417A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1719024E-A466-4A41-9AB4-C47A9E3B417A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1719024E-A466-4A41-9AB4-C47A9E3B417A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1719024E-A466-4A41-9AB4-C47A9E3B417A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1719024E-A466-4A41-9AB4-C47A9E3B417A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
