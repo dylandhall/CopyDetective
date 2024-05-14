@@ -58,27 +58,36 @@ public static class Ext
                 yield break;
             }
 
-            if (newLines.Length != matchingLines.Count() ||
-                newLines.Select(l => l.GetHashCode()).Distinct().Count() > 1)
+            if (newLines.Length != matchingLines.Count() || newLines.Select(l => l.GetHashCode()).Distinct().Count() > 1)
             {
-                if (addedText && lineCollection.Count > 10)
-                    yield return (matchingLines.Select(l => $"{l.ParentFile!.Filename}:{l.Index - lineCollection.Count + 1}").ToArray(), lineCollection.Select(l => l.Text).ToList());
-
                 var groups = newLines.GroupBy(l => l.GetHashCode()).Where(v => v.Count() > 1).ToList();
                 if (groups.Count == 0)
+                {
+                    if (addedText && lineCollection.Count > 10) yield return (matchingLines.Select(l => $"{l.ParentFile!.Filename}:{l.Index - lineCollection.Count + 1}").ToArray(), lineCollection.Select(l => l.Text).ToList());
                     yield break;
+                }
+                //
+                // if (groups.Count > 1 && addedText && lineCollection.Count > 10)
+                //     yield return (matchingLines.Select(l => $"{l.ParentFile!.Filename}:{l.Index - lineCollection.Count + 1}").ToArray(), lineCollection.Select(l => l.Text).ToList());
 
+                int returns = 0;
                 foreach (var group in groups)
                 {
                     // if we're no longer tracking a unique sequence, we'll have covered these intersections elsewhere
                     if (group.All(l => !(l.ParentFile![l.Index - lineCollection.Count]?.ValidStart ?? false)))
-                        yield break;
-                    foreach (var block in group.GetBlocks(lineCollection: lineCollection.Append(group.First()).ToList()))
+                        continue;
+
+                    foreach (var block in group.GetBlocks(lineCollection.Append(group.MinBy(l => l.ParentFile!.Filename + l.Index)!).ToList()))
                     {
                         yield return block;
+                        returns++;
                     }
                 }
 
+                if (returns > 1)
+                {
+                    yield return (matchingLines.Select(l => $"{l.ParentFile!.Filename}:{l.Index - lineCollection.Count + 1}").ToArray(), lineCollection.Select(l => l.Text).ToList());
+                }
                 yield break;
             }
 
@@ -89,22 +98,42 @@ public static class Ext
         } while (true);
     }
 
-    public static void SetValidStartingLines(this List<IGrouping<int, Line>> list)
+    public static void SetValidStartingLines(this List<Line[]> list)
     {
-        foreach (var line in list
-                     .Select(grouping => (grouping,
-                         hash: string.Join(string.Empty, grouping.Select(l => l.ParentFile!.Filename).OrderBy(l => l))
-                             .GetHashCode()))
-                     .GroupBy(g => g.hash)
-                     .SelectMany(groupsWithUniqueFileset =>
-                         groupsWithUniqueFileset.SelectMany(linesInFile => linesInFile.grouping)
+        // foreach (var line in list
+        //              .Select(grouping => (grouping,
+        //                  hash: string.Join(string.Empty, grouping.Select(l => l.ParentFile!.Filename).OrderBy(l => l))
+        //                      .GetHashCode()))
+        //              .GroupBy(g => g.hash)
+        //              .SelectMany(groupsWithUniqueFileset =>
+        //                  groupsWithUniqueFileset.SelectMany(linesInFile => linesInFile.grouping)
+        //                      .GroupBy(l => l.ParentFile!.Filename)
+        //                      .SelectMany(linesInFile => linesInFile
+        //                          .ExceptBy(linesInFile.Select(v => v.Index + 1), li => li.Index)
+        //                          .GroupBy(l =>
+        //                              l.GetHashCode()) // if a file has several identical lines, only start from one of them
+        //                          .Select(l => l.MinBy(i => i.Index)))))
+        //     line!.ValidStart = true;
+        // foreach (var line in list
+        //              .Select(grouping => (grouping,
+        //                  hash: string.Join(string.Empty, grouping.Select(l => l.ParentFile!.Filename).OrderBy(l => l))
+        //                      .GetHashCode()))
+        //              .GroupBy(g => g.hash)
+        //              .SelectMany(groupsWithUniqueFileset =>
+        //                  groupsWithUniqueFileset.SelectMany(linesInFile => linesInFile.grouping)
+        //                      .GroupBy(l => l.ParentFile!.Filename)
+        //                      .SelectMany(linesInFile => linesInFile.Where(l => l.TrimmedText.Length>3)
+        //                          .ExceptBy(linesInFile.Select(v => v.Index + 1), li => li.Index))))
+        //     line!.ValidStart = true;
+        foreach (var line in list.SelectMany(uniqueLines => uniqueLines)
                              .GroupBy(l => l.ParentFile!.Filename)
                              .SelectMany(linesInFile => linesInFile
-                                 .ExceptBy(linesInFile.Select(v => v.Index + 1), li => li.Index)
-                                 .GroupBy(l =>
-                                     l.GetHashCode()) // if a file has several identical lines, only start from one of them
-                                 .Select(l => l.MinBy(i => i.Index)))))
-            line!.ValidStart = true;
+                                 .Where(l => l.TrimmedText.Length>3)
+                                 .ExceptBy(linesInFile.Select(v => v.Index + 1), li => li.Index)))
+           line.ValidStart = true;
+        //
+        // Console.WriteLine(string.Join(", ", list.SelectMany(l => l).Where(l => l.ParentFile!.Filename.EndsWith("StudentLearningPathway.cshtml")).Select(l => l.Index)));
+        // Console.WriteLine(string.Join(", ", list.SelectMany(l => l).Where(l => l.ParentFile!.Filename.EndsWith("StudentLearningPathway.cshtml") && l.ValidStart).Select(l => l.Index)));
     }
 
     public static IEnumerable<string> GetFiles(this string folder, string filemask, bool recurse)
@@ -124,4 +153,6 @@ public static class Ext
     }
 
     public static string AsStringOf(this int len, char c = ' ') => new (Enumerable.Repeat(c, len).ToArray());
+
+    public static bool Eq(this string arg, string two) => arg.Equals(two, StringComparison.OrdinalIgnoreCase);
 }

@@ -6,6 +6,7 @@ public record FileContent
     public FileContent(string filename, HashSet<Line> lines)
     {
         Filename = filename;
+        HashCode = Filename.GetHashCode();
         Lines = lines;
         foreach (var line in Lines)
             line.ParentFile = this;
@@ -14,7 +15,8 @@ public record FileContent
     public string Filename { get; }
     public HashSet<Line> Lines { get; }
 
-    public override int GetHashCode() => Filename.GetHashCode();
+    public readonly int HashCode;
+    public override int GetHashCode() => HashCode;
 
     public override string ToString() => Filename + " (" + Lines.Count + " lines)";
 
@@ -42,4 +44,8 @@ public record Line
 
     private readonly int _hashCode; 
     public override int GetHashCode() => _hashCode;
+    
+    public Line[]? MatchingLines { get; set; }
+
+    public bool IsProcessed = false;
 }

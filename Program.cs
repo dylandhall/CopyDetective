@@ -23,27 +23,28 @@ if (args.Any(a => a.Trim() is "--help" or "-h"))
     return;
 }
 
-for (int i = 0; i < args.Length-1; i++)
+var lastIndex = args.Length - 1;
+for (int i = 0; i < args.Length; i++)
 {
-    if (args[i] == "-f" || args[i] == "--folder")
+    if (args[i].Eq("-f") || args[i].Eq("--folder") && i < lastIndex)
     {
         i++;
         folder = args[i];
     }
-    else if (args[i] == "-m" || args[i] == "--filemask")
+    else if (args[i].Eq("-m") || args[i].Eq("--filemask") && i < lastIndex)
     {
         i++;
         filemask = args[i];
     }
-    else if (args[i] is "-r" or "--recurse")
+    else if (args[i].Eq("-r") || args[i].Eq("--recurse"))
     {
         recurse = true;
     }
-    else if (args[i] is "-c" or "--clean")
+    else if (args[i].Eq("-c") || args[i].Eq("--clean"))
     {
         colour = false;
     }
-    else if (args[i] is "-w" or "--width")
+    else if (args[i].Eq("-w") || args[i].Eq("--width"))
     {
         i++;
         if (int.TryParse(args[i], out maxWidth)) maxWidth-=4;
@@ -58,18 +59,26 @@ var allFiles = await folder.GetFiles(filemask, recurse)
         })
     .ToListAsync();
 
-var fileGroups = allFiles
+var duplicateLineGroups = allFiles
     .SelectMany(l => l.Lines)
-    .Where(l => l.TrimmedText.Length>3)
+    //.Where(l => l.TrimmedText.Length>3)
     .GroupBy(l => l.GetHashCode())
     .Where(g => g.Count()>1)
+    .Select(g => g.ToArray())
     .ToList();
 
-fileGroups.SetValidStartingLines();
+foreach (var lineGroup in duplicateLineGroups)
+{
+    var lineArr = lineGroup.ToArray(); 
+    foreach (var line in lineArr)
+        line.MatchingLines = lineArr;
+}
 
-var groupsWithStartingPoint = fileGroups
+duplicateLineGroups.SetValidStartingLines();
+
+var groupsWithStartingPoint = duplicateLineGroups
     .Where(g => g.Any(l => l.ValidStart))
-    .OrderByDescending(g => g.Count())
+    .OrderByDescending(g => g.Length)
     .ThenBy(g => g.Min(a => a.Index))
     .ToList();
 
@@ -114,3 +123,5 @@ foreach (var (fileNames, lines) in duplicatedBlocksOrderedByFilename)
     Console.Write((width + 2).AsStringOf('\u2550'));
     Console.WriteLine("\u255d");
 }
+return;
+
